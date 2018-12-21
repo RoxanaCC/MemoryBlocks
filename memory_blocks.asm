@@ -3,7 +3,7 @@
 .model flat, stdcall
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;includem biblioteci, si declaram ce functii vrem sa importam
+;including the libraries and mentioning the functions
 includelib msvcrt.lib
 extern exit: proc
 extern malloc: proc
@@ -13,50 +13,49 @@ includelib canvas.lib
 extern BeginDrawing: proc
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;declaram simbolul start ca public - de acolo incepe executia
 public start
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;sectiunile programului, date, respectiv cod
+;cod section
 .data
-;aici declaram date
+;declaring variables
 window_title DB "Memory blocks",0
 area_width EQU 400
 area_height EQU 350
 area DD 0
 
-matrix 	db 'X','T','R','H'
-		db 'S','O','H','X'
-		db 'R','O','S','T'
+matrix 	db 'X','T','R','H' ;the game's cards matrix
+	db 'S','O','H','X'
+	db 'R','O','S','T'
 		
-check	db 0,0,0,0
-		db 0,0,0,0
-		db 0,0,0,0
+check	db 0,0,0,0 ;a matrix to check which cards have already been found
+	db 0,0,0,0
+	db 0,0,0,0
 		
 nr1 dd 0
 nr2 dd 0
 contor dd 0
 		
 
-X1 DD 0 ;coordonatele primei carti
+X1 DD 0 ;the coordonates for the group of pressed cards
 Y1 DD 0
-X2 DD 0 ;coordonatele celei de-a doua carti
+X2 DD 0 
 Y2 DD 0		
 
-poz1x dd 0 ;pozitile din matrice a celor 2 block-uri, folosite in resetarea matricei check
+poz1x dd 0 ;the positions of the cards in the matrix
 poz1y dd 0
 poz2x dd 0
 poz2y dd 0
 
 time dd 0
 
-val1 Db 0 ;valoarea din matrice a cartilor
+val1 Db 0 ;the cards value (for the matrix)
 val2 Db 0
 
-counter DD 0 ;nr perechi gasite
+counter DD 0 ;no found pairs
 count_click DD 0
 
-block_width EQU 40 ;dimensiune block
+block_width EQU 40 ;cards sizes
 block_height EQU 40
 
 culoare_simb DD 0
@@ -74,9 +73,9 @@ include letters.inc
 include blocks.inc
 
 .code
-; procedura make_text afiseaza o litera sau o cifra la coordonatele date
-; arg1 - simbolul de afisat (litera sau cifra)
-; arg2 - pointer la vectorul de pixeli
+; procedure make_text writes a letter or a number at the given coordinates
+; arg1 - symbol
+; arg2 - pointer to the pixels array
 ; arg3 - pos_x
 ; arg4 - pos_y
 make_text proc
@@ -84,7 +83,7 @@ make_text proc
 	mov ebp, esp
 	pusha
 	
-	mov eax, [ebp+arg1] ; citim simbolul de afisat
+	mov eax, [ebp+arg1] ; reading the simbol
 	cmp eax, 'A'
 	jl make_digit
 	cmp eax, 'Z'
@@ -104,7 +103,7 @@ make_space:
 	
 	cmp eax,' '
 	jg make_point
-	mov eax, 26 ; de la 0 pana la 25 sunt litere, 26 e space
+	mov eax, 26 ; 0 to 25 are letters, 26 is space
 	lea esi, letters
 	jmp draw_text
 
@@ -121,14 +120,14 @@ draw_text:
 	add esi, eax
 	mov ecx, symbol_height
 bucla_simbol_linii:
-	mov edi, [ebp+arg2] ; pointer la matricea de pixeli
-	mov eax, [ebp+arg4] ; pointer la coord y
+	mov edi, [ebp+arg2] ; pointer the the pixels matrix
+	mov eax, [ebp+arg4] ; pointer to coord y
 	add eax, symbol_height
 	sub eax, ecx
 	mov ebx, area_width
 	mul ebx
-	add eax, [ebp+arg3] ; pointer la coord x
-	shl eax, 2 ; inmultim cu 4, avem un DWORD per pixel
+	add eax, [ebp+arg3] ; pointer to coord x
+	shl eax, 2 ; multiply by 4, DWORD per pixel
 	add edi, eax
 	push ecx
 	mov ecx, symbol_width
@@ -151,7 +150,7 @@ simbol_pixel_next:
 	ret
 make_text endp
 
-; un macro ca sa apelam mai usor desenarea simbolului
+; a macro to call the procedure easer
 make_text_macro macro symbol, drawArea, x, y
 	push y
 	push x
@@ -162,32 +161,32 @@ make_text_macro macro symbol, drawArea, x, y
 endm
 
 make_symbol proc   
-	;procedura pentru desenare simboluri
+	;procedure for drawing a symbol (card)
 	push ebp
 	mov ebp,esp
 	pusha
 Empty:
-	;desenam pe blocul gol
-	mov eax, [ebp + arg1]  ;citim simbolul de afisat
+	;drawing turned card
+	mov eax, [ebp + arg1]  ;reading the symbol
 	cmp eax, 'E'
 	jne make_X
 	sub eax, 'E'
 	lea esi, blocks
-	mov culoare_simb, 0290e4fh ;selectam culoarea pentru blocul gol
+	mov culoare_simb, 0290e4fh ;picking the color
 	jmp draw_symbol
 	
 make_X:
-	;desenam pe X in portocaliu
-	mov eax, [ebp + arg1]  ;citim simbolul de afisat
+	;drawing X in orange
+	mov eax, [ebp + arg1]
 	cmp eax, 'X'
 	jne make_O
-	mov eax, 1 ;al doilea simbol de afisat din fisierul de blocks
+	mov eax, 1
 	lea esi, blocks
-	mov culoare_simb, 0cc6a14h ;selectam culoarea
+	mov culoare_simb, 0cc6a14h
 	jmp draw_symbol
 	
 make_O:
-	;desenam pe O in mov
+	;drawing O in purple
 	cmp eax, 'O'
 	jne make_R
 	mov eax, 2 
@@ -196,7 +195,7 @@ make_O:
 	jmp draw_symbol
 	
 make_R:
-	;desenam Rombul in galben
+	;drawing dimond in yellow
 	cmp eax, 'R'
 	jne make_T
 	mov eax, 3 
@@ -205,7 +204,7 @@ make_R:
 	jmp draw_symbol
 
 make_T:
-	;desenam Trifoiul in verde
+	;drawing cover in green
 	cmp eax, 'T'
 	jne make_H
 	mov eax, 4
@@ -214,7 +213,7 @@ make_T:
 	jmp draw_symbol
 	
 make_H:
-	;desenam Inima in rosu
+	;drawing heart in red
 	cmp eax, 'H'
 	jne make_S
 	mov eax, 5 
@@ -223,7 +222,7 @@ make_H:
 	jmp draw_symbol
 	
 make_S:
-	;desenam Spade in albastru
+	;drawing spade in blue
 	cmp eax, 'S'
 	jne make_N
 	mov eax, 6
@@ -232,7 +231,7 @@ make_S:
 	jmp draw_symbol
 
 make_N:
-	;desenam spatiu gol
+	;drawing empty space
 	mov eax, 7
 	mov culoare_simb, 0 
 	lea esi, blocks
@@ -245,14 +244,14 @@ draw_symbol:
 	add esi, eax
 	mov ecx, block_height
 bucla_simbol_linii_block:
-	mov edi, [ebp+arg2] ; pointer la matricea de pixeli
-	mov eax, [ebp+arg4] ; pointer la coord y
+	mov edi, [ebp+arg2]
+	mov eax, [ebp+arg4]
 	add eax, block_height
 	sub eax, ecx
 	mov ebx, area_width
 	mul ebx
-	add eax, [ebp+arg3] ; pointer la coord x
-	shl eax, 2 ; inmultim cu 4, avem un DWORD per pixel
+	add eax, [ebp+arg3]
+	shl eax, 2
 	add edi, eax
 	push ecx
 	mov ecx, block_height
@@ -263,7 +262,7 @@ bucla_simbol_coloane_block:
 	mov dword ptr [edi], edx
 	jmp simbol_pixel_next_block
 simbol_pixel_alb_block:
-	mov dword ptr [edi], 0FFFFFFh ;fundal patratel cu simbol 
+	mov dword ptr [edi], 0FFFFFFh
 simbol_pixel_next_block:
 	inc esi
 	add edi, 4
@@ -276,7 +275,7 @@ simbol_pixel_next_block:
 	ret
 make_symbol endp
 
-; un macro ca sa apelam mai usor desenarea simbolului
+; a macro to call the procedure easer
 make_symbol_macro macro symbol, drawArea, x, y
 	push y
 	push x
@@ -286,7 +285,7 @@ make_symbol_macro macro symbol, drawArea, x, y
 	add esp, 16
 endm
 
-; procedura ft_randomizer amesteca elementele matricei de carti
+; procedure ft_randomizer mixes the cards matrix
 ft_randomizer proc
 
 	push ebp
@@ -321,11 +320,11 @@ et_excange:
 	ret
 ft_randomizer endp
 	
-; procedura check_card verifica pozitile alese din matrice si daca au acelasi simbol, urmand sa afiseze/sterga/intoarca tartile alese
-; arg1 - linia din matrice
-; arg2 - coloana din matrice
-; arg3 - pos_x
-; arg4 - pos_y
+; procedura check_card checks the picked cards and turns or deletes them
+; arg1 - positions in the matrix
+; arg2 - 
+; arg3 - coordinates x
+; arg4 - and y
 check_card proc
 
 	push ebp
@@ -520,9 +519,8 @@ check_card_macro macro X_mat, Y_mat, x, y
 endm
 
 
-; functia de desenare - se apeleaza la fiecare click
-; sau la fiecare interval de 200ms in care nu s-a dat click
-; arg1 - evt (0 - initializare, 1 - click, 2 - s-a scurs intervalul fara click)
+; drawing function called at every click or every 200ms
+; arg1 - evt (0 - initializ, 1 - click, 2 - time up)
 ; arg2 - x
 ; arg3 - y
 draw proc
@@ -550,7 +548,7 @@ clear:
 	push eax
 	push 0
 	push area
-	call memset			;ecran negru
+	call memset ;black screen
 	add esp, 12
 	mov counter, 0
 	mov count_click, 0
@@ -569,8 +567,8 @@ clear:
 	call ft_randomizer
 	;reinitializare matricei check
 	
-	mov ebx, 0 ;pentru parcurgerea liniilor
-	mov eax, 0 ;pentru parcurgerea coloanelor	
+	mov ebx, 0 ;for the lines
+	mov eax, 0 ;for the colons	
 	
 	mov check[eax][ebx], 0
 	inc ebx
@@ -824,7 +822,7 @@ final_draw:
 draw endp
 
 start:
-	;alocam memorie pentru zona de desenat
+	;alocating memory to draw
 	mov eax, area_width
 	mov ebx, area_height
 	mul ebx
@@ -833,7 +831,7 @@ start:
 	call malloc
 	add esp, 4
 	mov area, eax
-	;apelam functia de desenare a ferestrei
+	;call drawing function
 	; typedef void (*DrawFunc)(int evt, int x, int y);
 	; void __cdecl BeginDrawing(const char *title, int width, int height, unsigned int *area, DrawFunc draw);
 	push offset draw
@@ -844,7 +842,7 @@ start:
 	call BeginDrawing
 	add esp, 20
 	
-	;terminarea programului
+	;end program
 	push 0
 	call exit
 end start
